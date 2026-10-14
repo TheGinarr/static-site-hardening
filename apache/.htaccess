@@ -1,0 +1,46 @@
+# Apache-Konfiguration fuer eine statische Website (Security-Hardening)
+AddDefaultCharset utf-8
+Options -Indexes
+DirectoryIndex index.html
+ErrorDocument 404 /404.html
+ServerSignature Off
+
+# Nur lesende Methoden zulassen (statische Seite)
+<IfModule mod_authz_core.c>
+  <LimitExcept GET HEAD OPTIONS>
+    Require all denied
+  </LimitExcept>
+</IfModule>
+
+# Versteckte Dateien (.git, .env, ...) niemals ausliefern (.well-known bleibt erreichbar)
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteRule "(^|/)\.(?!well-known/)" - [F]
+</IfModule>
+
+<IfModule mod_headers.c>
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set X-Frame-Options "DENY"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+  Header always set Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=(), fullscreen=(self)"
+  Header always set Cross-Origin-Opener-Policy "same-origin"
+  Header always set Cross-Origin-Resource-Policy "same-origin"
+  # HSTS: greift nur ueber HTTPS; nach stabilem Betrieb optional preload ergaenzen
+  Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+  # CSP an die eigene Seite anpassen (externe Bilder/iframes/APIs ergaenzen).
+  # CSP: kein object/embed, kein Framing, Formulare/Basis nur eigene Origin, HTTP wird angehoben.
+  # 'unsafe-inline' ist fuer die Inline-Seitenskripte noetig (buildfreie Architektur) - externe Skripte sind komplett verboten.
+  Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; font-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; manifest-src 'self'; worker-src 'self'; upgrade-insecure-requests"
+</IfModule>
+
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresByType font/woff2 "access plus 1 year"
+  ExpiresByType text/css "access plus 7 days"
+  ExpiresByType application/javascript "access plus 7 days"
+  ExpiresByType text/html "access plus 0 seconds"
+</IfModule>
+
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/css application/javascript image/svg+xml
+</IfModule>
